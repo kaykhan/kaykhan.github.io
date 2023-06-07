@@ -1,12 +1,11 @@
 ---
 layout: post
-title:  "How to monitor spot instances changes on AWS"
+title:  "How to monitor spot instance changes on AWS"
 date:   2023-06-06 12:00:00 +0100
-categories: aws eks spot spot-instances event-bridge sns lambda
+categories: aws eks spot event-bridge sns lambda slack terraform
 ---
 
-Spot instances are instances that use spare EC2 capacity and becuase of that they are much cheaper than on-demand pricing.
-[Learn more](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html). However they can be reclaimed by AWS within a 10 minute when someone purchases an on-demand instance.
+Spot instances are instances that use spare EC2 capacity and becuase of that they are much cheaper than on-demand pricing. However they can be reclaimed by AWS within a 10 minute when there are requests/purchases for on-demand instance [(learn more)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html).
 
 We have an AWS EKS cluster, there is a particular workload which is suitable to be deployed on spot instances. Recently we swapped this workload from on-demand instances to spot instances. 
 
@@ -23,7 +22,7 @@ How do we define spot instance notifications & can we ship these notifications t
 
 <b>1. Create Event Bridge Rules for Spot Instance Changes</b>
 
-Event Bridge is an aws severless component which allows us to build event-driven architecture.
+Event Bridge is a aws severless component which allows us to build event-driven architecture.
 
 Within Event Bridge there are number of Event Types dedicated to Spot Instances.
 [Learn More](https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/spot-fleet-event-types.html)
@@ -46,6 +45,7 @@ Within Event Bridge there are number of Event Types dedicated to Spot Instances.
 <b>1. Setup SNS Topic & Lambda</b>
 
 We can use the terraform module [Notify Slack](https://registry.terraform.io/modules/terraform-aws-modules/notify-slack/aws/latest) to setup the SNS topic & Lambda function. This module does a lot of the heavy lifting for us, no need to write any custom lambda code.
+We can use Notify Slack to listen for Cloudwatch Metrics or in our case Event Bridge Rules.
 
 {% highlight terraform %}
 
@@ -163,3 +163,5 @@ module "eventbridge" {
 }
 
 {% endhighlight %}
+
+That it! When the rules are triggered they will be published to the SNS topic, the lambda function will listen to new messages on that topic and publish them to slack.

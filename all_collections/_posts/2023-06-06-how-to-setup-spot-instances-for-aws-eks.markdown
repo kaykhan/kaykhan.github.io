@@ -2,20 +2,18 @@
 layout: post
 title:  "How to setup spot instances on AWS EKS"
 date:   2023-06-06 11:00:00 +0100
-categories: aws eks spot spot-instances 
+categories: aws eks spot terraform
 ---
 
-Spot instances are instances that use spare EC2 capacity and becuase of that they are much cheaper than on-demand pricing.
-[Learn more](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html). However they can be reclaimed by AWS within a 10 minute window when someone purchases an on-demand instance.
-
-We have an AWS EKS cluster, there is a particular workload which is suitable to be deployed on spot instances nodes. 
+We use AWS Kubernetes offering "EKS". There is a particualar workload which is suitable usecase for spot instances
 
 ## Goal
 
-How do we define a set of AWS EKS nodes to be of type spot-instances as appose to on-demand instances. And how do we assign specific workload to be deployed on these spot instance nodes.
+How do we define a set of AWS EKS nodes to be of type spot-instance as appose to on-demand instance. And how do we assign specific workload to be deployed on these spot instance nodes.
 
 ## Architecture
 
+We have a kubernetes cluster which consits of 3 different node groups. `worker`, `cron` and `ops`. We determined that the `worker` node group which consists of two nodes is sutiable for spot instances.
 
 ![architecture](/images/spot-instance/spot-instance-architecture-on-aws-eks.png)
 
@@ -24,7 +22,7 @@ How do we define a set of AWS EKS nodes to be of type spot-instances as appose t
 
 <b>1. Setup Spot Instance Node Group Using Terraform</b>
 
-We use the terraform [AWS EKS](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest) module to deploy a production Kubernetes Cluster to AWS.
+We use the terraform [AWS EKS](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest) module to deploy a production kubernetes cluster to AWS.
 
 - We define a set of `eks_managed_node_groups`. Given our architecture we need 3 node groups (worker, cron and ops). Where the `worker` node group will be a spot instance node group. 
 
@@ -130,8 +128,8 @@ spec:
 
 ## References
 
+- <a href="https://aws.amazon.com/ec2/spot/">https://aws.amazon.com/ec2/spot/</a>
 - <a href="https://repost.aws/knowledge-center/eks-spot-instance-best-practices">https://repost.aws/knowledge-center/eks-spot-instance-best-practices</a>
-- https://aws.amazon.com/ec2/spot/
-- https://aws.amazon.com/blogs/compute/run-your-kubernetes-workloads-on-amazon-ec2-spot-instances-with-amazon-eks/
-- https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/
-- https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html
+- <a href="https://aws.amazon.com/blogs/compute/run-your-kubernetes-workloads-on-amazon-ec2-spot-instances-with-amazon-eks/">https://aws.amazon.com/blogs/compute/run-your-kubernetes-workloads-on-amazon-ec2-spot-instances-with-amazon-eks/</a>
+- <a href="https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/">https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/</a>
+- <a href="https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html">https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html</a>
