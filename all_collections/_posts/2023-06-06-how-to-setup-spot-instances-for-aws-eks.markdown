@@ -5,7 +5,7 @@ date:   2023-06-06 11:00:00 +0100
 categories: aws eks spot terraform
 ---
 
-We use AWS Kubernetes offering "EKS". There is a particualar workload which is suitable usecase for spot instances
+We use AWS's Kubernetes offering "EKS". We have identified a particualar workload which can be suitable usecase for spot instances
 
 ## Goal
 
@@ -38,11 +38,6 @@ We can use the cli tool [amazon-ec2-instance-selector](https://github.com/aws/am
 module "eks" {
   source                          = "terraform-aws-modules/eks/aws"
   version                         = "19.13.0"
-  cluster_name                    = local.cluster_name
-  cluster_version                 = local.cluster_version
-  cluster_endpoint_public_access  = true
-  cluster_endpoint_private_access = true
-
  ...
 
   eks_managed_node_groups = {
@@ -120,9 +115,11 @@ module "eks" {
 When creating a kubernetes deloymenet we can use the pod spec `nodeSelector` to allocate/schedule this deployment to a specific nodegroup. [learn more](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 {% highlight terraform %}
+
 spec:
     nodeSelector:
         acme/node-type: worker
+
 {% endhighlight %}
 
 

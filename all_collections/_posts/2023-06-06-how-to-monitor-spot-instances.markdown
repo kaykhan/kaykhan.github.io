@@ -45,7 +45,7 @@ Within Event Bridge there are number of Event Types dedicated to Spot Instances.
 <b>1. Setup SNS Topic & Lambda</b>
 
 We can use the terraform module [Notify Slack](https://registry.terraform.io/modules/terraform-aws-modules/notify-slack/aws/latest) to setup the SNS topic & Lambda function. This module does a lot of the heavy lifting for us, no need to write any custom lambda code.
-We can use Notify Slack to listen for Cloudwatch Metrics or in our case Event Bridge Rules.
+We can use Notify Slack to publish different messages but in our case we will be using it for Event Bridge Rules.
 
 {% highlight terraform %}
 
@@ -71,13 +71,53 @@ Using the terraform aws module [EventBridge](https://registry.terraform.io/modul
 We can define a rule for each spot instance event type which we would like to track. Aswell as defining a target whenever the rule is triggered it sends the message to the target (SNS topic).
 
 {% highlight terraform %}
+
+resource "aws_sqs_queue" "event_bridge_dlq" {
+  name = "event_bridge_dlq"
+  tags = local.tags
+}
+
+
 module "eventbridge" {
   source  = "terraform-aws-modules/eventbridge/aws"
-  version = "2.1.0"
+  version = "2.3.0"
 
-  create_bus = false
+  create_bus         = false
+  create_permissions = true
+  create_role        = true
+
+  attach_sns_policy = true
+  sns_target_arns = [
+    local.slack_topic_arn
+  ]
 
   rules = {
+    ec2-spot-instance-request-fullfillment = {
+      description = "ec2-spot-instance-request-fullfillment"
+      event_pattern = jsonencode({
+        "source" : ["aws.ec2"],
+        "detail-type" : ["EC2 Spot Instance Request Fulfillment"]
+      })
+      enabled = true
+    }
+
+    ec2-spot-interruption-warning = {
+      description = "ec2-spot-interruption-warning"
+      event_pattern = jsonencode({
+        "source" : ["aws.ec2"],
+        "detail-type" : ["EC2 Spot Instance Interruption Warning"]
+      })
+      enabled = true
+    }
+
+    ec2-spot-fleet-instance-change = {
+      description = "ec2-spot-fleet-instance-change"
+      event_pattern = jsonencode({
+        "source" : ["aws.ec2fleet"],
+        "detail-type" : ["EC2 Fleet Spot Instance Request Change"]
+      })
+      enabled = true
+    }
 
     spot-fleet-instance-change = {
       description = "spot-fleet-instance-change"
@@ -127,34 +167,63 @@ module "eventbridge" {
   }
 
   targets = {
+
+    ec2-spot-instance-request-fullfillment = [
+      {
+        name            = "ec2-spot-instance-request-fullfillment"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
+      }
+    ]
+    ec2-spot-interruption-warning = [
+      {
+        name            = "ec2-spot-interruption-warning"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
+      }
+    ]
+
+    ec2-spot-fleet-instance-change = [
+      {
+        name            = "ec2-spot-fleet-instance-change"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
+      }
+    ]
+
     spot-fleet-instance-change = [
       {
-        name = "spot-fleet-instance-change"
-        arn  = local.slack_topic_arn
+        name            = "spot-fleet-instance-change"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
       },
     ],
     spot-fleet-instance-request-change = [
       {
-        name = "spot-fleet-instance-request-change"
-        arn  = local.slack_topic_arn
+        name            = "spot-fleet-instance-request-change"
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
+        arn             = local.slack_topic_arn
       },
     ],
     spot-fleet-state-change = [
       {
-        name = "spot-fleet-state-change"
-        arn  = local.slack_topic_arn
+        name            = "spot-fleet-state-change"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
       },
     ],
     spot-fleet-information = [
       {
-        name = "spot-fleet-information"
-        arn  = local.slack_topic_arn
+        name            = "spot-fleet-information"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
       },
     ],
     spot-fleet-error = [
       {
-        name = "spot-fleet-error"
-        arn  = local.slack_topic_arn
+        name            = "spot-fleet-error"
+        arn             = local.slack_topic_arn
+        dead_letter_arn = aws_sqs_queue.event_bridge_dlq.arn
       },
     ]
   }
